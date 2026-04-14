@@ -39,7 +39,7 @@ const Logo = ({ type = "horizontal", className = "" }: { type?: "horizontal" | "
 
   if (error) {
     return (
-      <div className={`flex items-center gap-2 font-display font-bold italic text-2xl ${className}`}>
+      <div className={`flex items-center font-display font-bold italic text-2xl ${className}`}>
         <span className="text-brand-cyan">Dev</span>
         <span className="text-white">ARO</span>
       </div>
@@ -93,9 +93,9 @@ export default function App() {
     <div className="min-h-screen selection:bg-brand-cyan selection:text-brand-dark">
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b-0 mt-4 mx-4 md:mx-12 rounded-2xl">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">
           <div onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="cursor-pointer">
-            <Logo type="horizontal" className="h-10 md:h-12" />
+            <Logo type="horizontal" className="h-24 md:h-28" />
           </div>
           
           <div className="hidden md:flex items-center gap-8">
@@ -105,7 +105,7 @@ export default function App() {
             <button onClick={() => scrollToSection("admin")} className="text-sm font-medium hover:text-brand-cyan transition-colors">Admin</button>
             <button onClick={() => scrollToSection("tecnico")} className="text-sm font-medium hover:text-brand-cyan transition-colors">Diferenciais</button>
             <a 
-              href="https://wa.me/5500000000000" 
+              href="https://wa.me/5585987582159" 
               target="_blank" 
               className="bg-brand-blue hover:bg-brand-blue/80 px-6 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2"
             >
@@ -131,7 +131,7 @@ export default function App() {
             <button onClick={() => scrollToSection("admin")} className="text-left py-2">Admin</button>
             <button onClick={() => scrollToSection("tecnico")} className="text-left py-2">Diferenciais</button>
             <a 
-              href="https://wa.me/5500000000000" 
+              href="https://wa.me/5585987582159" 
               target="_blank" 
               className="bg-brand-blue py-3 rounded-xl text-center font-semibold flex items-center justify-center gap-2"
             >
@@ -158,7 +158,7 @@ export default function App() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <a 
-                href="https://wa.me/5500000000000" 
+                href="https://dev-aro-clientes.vercel.app/?view=showcase&product=bc14dca8-73d6-44e0-a400-da752db2f481" 
                 className="bg-brand-blue hover:bg-brand-blue/80 px-8 py-4 rounded-full text-lg font-semibold transition-all flex items-center justify-center gap-2 group"
               >
                 Solicitar Demonstração <ArrowRight className="group-hover:translate-x-1 transition-transform" />
@@ -179,7 +179,7 @@ export default function App() {
             className="relative"
           >
             <div className="absolute -inset-4 bg-brand-blue/20 blur-3xl rounded-full"></div>
-            <Logo type="icon" className="relative w-full max-w-md mx-auto drop-shadow-2xl animate-float" />
+            <Logo type="icon" className="relative w-full max-w-4xl mx-auto drop-shadow-2xl animate-float" />
           </motion.div>
         </div>
       </section>
@@ -195,8 +195,8 @@ export default function App() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FeatureCard 
               icon={Smartphone} 
-              title="Cardápio Digital Interativo" 
-              description="Visualização de produtos por categorias com fotos de alta qualidade e descrições detalhadas."
+              title="Menu Digital Local & Delivery" 
+              description="Atendimento local e a distância (entrega/retirada) com interface intuitiva e fotos reais."
             />
             <FeatureCard 
               icon={QrCode} 
@@ -204,9 +204,9 @@ export default function App() {
               description="Acesso rápido ao cardápio vinculado diretamente ao cliente, sem necessidade de intermediários."
             />
             <FeatureCard 
-              icon={Zap} 
-              title="Ofertas Semanais" 
-              description="Vitrine exclusiva para promoções e itens em destaque, aumentando o ticket médio."
+              icon={Truck} 
+              title="Cálculo de Frete Inteligente" 
+              description="Cálculo automático de frete com regras flexíveis definidas pelo administrador."
             />
             <FeatureCard 
               icon={CheckCircle2} 
@@ -215,8 +215,8 @@ export default function App() {
             />
             <FeatureCard 
               icon={Monitor} 
-              title="Acompanhamento em Tempo Real" 
-              description="Painel digital para clientes visualizarem o status do preparo e chamada para retirada."
+              title="Status do Pedido" 
+              description="O cliente consulta o status do preparo e entrega em tempo real, direto do seu dispositivo."
             />
           </div>
         </div>
@@ -452,7 +452,7 @@ export default function App() {
             Junte-se a dezenas de empresas que já utilizam o DevARO para crescer.
           </p>
           <a 
-            href="https://wa.me/5500000000000" 
+            href="https://dev-aro-clientes.vercel.app/?view=showcase&product=bc14dca8-73d6-44e0-a400-da752db2f481" 
             className="inline-flex bg-brand-cyan text-brand-dark hover:bg-white px-10 py-4 rounded-full text-xl font-bold transition-all relative z-10"
           >
             Começar Agora
@@ -463,7 +463,7 @@ export default function App() {
       {/* Footer */}
       <footer className="py-12 px-6 border-t border-white/10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-          <Logo type="horizontal" className="h-8" />
+          <Logo type="horizontal" className="h-20" />
           <p className="text-gray-500 text-sm">© 2026 DevARO - Tecnologia em Movimento. Todos os direitos reservados.</p>
           <div className="flex gap-6">
             <a href="#" className="text-gray-400 hover:text-brand-cyan transition-colors">Privacidade</a>
@@ -474,7 +474,7 @@ export default function App() {
 
       {/* WhatsApp Floating Button */}
       <a 
-        href="https://wa.me/5500000000000" 
+        href="https://wa.me/5585987582159" 
         target="_blank"
         className="fixed bottom-8 right-8 z-50 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform flex items-center justify-center"
       >
