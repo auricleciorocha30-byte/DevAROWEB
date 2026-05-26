@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Asset, Category, Lead, Settings } from "../types";
 import { LogOut, Trash2, Plus, GripVertical, Download, Link as LinkIcon, Edit2, Play, Image as ImageIcon, Tags, Users, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -26,7 +26,6 @@ export default function Admin() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [settings, setSettings] = useState<Settings>({});
-  const [serverHealth, setServerHealth] = useState<any>(null);
 
   // Form states
   const [newCatName, setNewCatName] = useState("");
@@ -42,36 +41,10 @@ export default function Admin() {
   const [passwordMessage, setPasswordMessage] = useState("");
 
   useEffect(() => {
-    checkHealth();
     if (authenticated) {
       fetchData();
     }
   }, [authenticated]);
-
-  const checkHealth = async (retries = 3) => {
-    try {
-      console.log(`Checking health (retries left: ${retries})...`);
-      const res = await fetch("/api/health");
-      if (!res.ok) {
-        // Try fallback ping
-        const pingRes = await fetch("/api/ping");
-        if (pingRes.ok) {
-          setServerHealth({ status: "partial", error: "DB Health failed, but API is alive", details: `Status ${res.status}` });
-          return;
-        }
-        throw new Error(`Status ${res.status}`);
-      }
-      const data = await res.json();
-      setServerHealth(data);
-    } catch (err: any) {
-      console.error("Health check failed:", err);
-      if (retries > 0) {
-        setTimeout(() => checkHealth(retries - 1), 1000);
-      } else {
-        setServerHealth({ status: "error", error: `Erro de rede ou servidor: ${err.message}` });
-      }
-    }
-  };
 
   const fetchData = async () => {
     fetch("/api/categories").then(res => res.json()).then(setCategories);
@@ -93,30 +66,15 @@ export default function Admin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
-      
-      const contentType = res.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setAuthenticated(true);
-          setUserEmail(data.email);
-        } else {
-          const detailStr = data.details ? ` (${data.details})` : "";
-          setLoginError((data.error || "Credenciais inválidas") + detailStr);
-        }
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAuthenticated(true);
+        setUserEmail(data.email);
       } else {
-        const text = await res.text();
-        console.error("Non-JSON response:", text);
-        try {
-          const json = JSON.parse(text);
-          setLoginError(`${json.error || 'Erro'} ${json.details ? ': ' + json.details : ''}`);
-        } catch {
-          setLoginError(`Erro (${res.status}): ${text.substring(0, 100)}...`);
-        }
+        setLoginError(data.error || "Credenciais inválidas");
       }
-    } catch (err) {
-      console.error("Login fetch error:", err);
-      setLoginError("Erro de conexão ao servidor. Verifique se o backend está rodando.");
+    } catch {
+      setLoginError("Erro de conexão ao servidor");
     }
   };
 
@@ -192,12 +150,6 @@ export default function Admin() {
           <h2 className="text-2xl font-display font-bold text-white mb-2 relative z-10 flex items-center gap-2">
             <Lock size={24} className="text-brand-cyan" /> Acesso Admin
           </h2>
-          {serverHealth && serverHealth.status !== "ok" && (
-            <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-xs text-red-400 mb-2 relative z-10">
-              <strong>Erro no Servidor:</strong> {serverHealth.error || "Erro desconhecido"}
-              {serverHealth.initError && <p className="mt-1 opacity-70">Init: {serverHealth.initError}</p>}
-            </div>
-          )}
           {loginError && <p className="text-red-400 text-sm relative z-10">{loginError}</p>}
           
           <input 
