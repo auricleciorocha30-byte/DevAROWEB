@@ -6,7 +6,12 @@ service cloud.firestore {
     }
 
     function isSignedIn() { return request.auth != null; }
-    function isAdmin() { return isSignedIn(); } // Single user simple setup
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == 'admin@admin.com' || 
+        request.auth.token.email == 'auricleciorocha30@gmail.com'
+      ); 
+    }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
