@@ -19,11 +19,16 @@ app.get("/api/ping", (req, res) => {
 });
 
 // Turso client setup
-const dbUrl = process.env.TURSO_DATABASE_URL;
+const dbUrl = process.env.TURSO_DATABASE_URL || process.env.URL_DO_BANCO_DE_DADOS_TURSO;
 const dbToken = process.env.TURSO_AUTH_TOKEN;
 
 // Only use file fallback if NOT on Vercel or other serverless env
-const defaultDbUrl = process.env.VERCEL ? "" : "file:local.db";
+const isVercel = !!process.env.VERCEL;
+const defaultDbUrl = isVercel ? "" : "file:local.db";
+
+if (!dbUrl && isVercel) {
+  console.error("❌ CRITICAL: No database URL provided in Vercel environment.");
+}
 
 const db = createClient({
   url: dbUrl || defaultDbUrl,
