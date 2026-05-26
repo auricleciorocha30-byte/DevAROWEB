@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createClient } from "@libsql/client";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -12,40 +11,62 @@ console.log("Environment check:", {
 const app = express();
 const PORT = 3000;
 
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
 // Simple ping endpoint (zero dependencies)
 app.get("/api/ping", (req, res) => {
   res.json({ pong: true, time: new Date().toISOString() });
 });
 
 // Turso client setup
-const dbUrl = process.env.TURSO_DATABASE_URL || process.env.URL_DO_BANCO_DE_DADOS_TURSO;
-const dbToken = process.env.TURSO_AUTH_TOKEN;
-
-// Only use file fallback if NOT on Vercel or other serverless env
-const isVercel = !!process.env.VERCEL;
-const defaultDbUrl = isVercel ? "libsql://dummy-url-to-prevent-crash.turso.io" : "file:local.db";
-
-if (!dbUrl && isVercel) {
-  console.error("❌ CRITICAL: No database URL provided in Vercel environment.");
-}
-
-const db = createClient({
-  url: dbUrl || defaultDbUrl,
-  authToken: dbToken || "",
-});
-
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
 let dbInitError: string | null = null;
 let initPromise: Promise<void> | null = null;
+let db: any = null;
+
+async function getDb() {
+  if (!db) {
+    const dbUrl = process.env.TURSO_DATABASE_URL || process.env.URL_DO_BANCO_DE_DADOS_TURSO;
+    const dbToken = process.env.TURSO_AUTH_TOKEN;
+    
+    const isVercel = !!process.env.VERCEL;
+    const defaultDbUrl = isVercel ? "libsql://dummy-url-to-prevent-crash.turso.io" : "file:local.db";
+    
+    if (!dbUrl && isVercel) {
+      console.error("❌ CRITICAL: No database URL provided in Vercel environment.");
+    }
+
+    try {
+      let createClient;
+      if (isVercel) {
+        // Use web client for Vercel to avoid native SQLite bindings crashing the Edge/Node function
+        const mod = await import("@libsql/client/web");
+        createClient = mod.createClient;
+      } else {
+        const mod = await import("@libsql/client");
+        createClient = mod.createClient;
+      }
+
+      db = createClient({
+        url: dbUrl || defaultDbUrl,
+        authToken: dbToken || "",
+      });
+    } catch (e: any) {
+      console.error("Failed to create Turso client:", e);
+      throw new Error(`Failed to create database client: ${e.message}`);
+    }
+  }
+  return db;
+}
 
 // Function to initialize database
 async function initDb() {
   try {
     console.log("Checking/Initializing database...");
+    const database = await getDb();
+    
     // Categories table
-    await db.execute(`
+    await database.execute(`
       CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL
@@ -53,7 +74,7 @@ async function initDb() {
     `);
     
     // Assets table
-    await db.execute(`
+    await database.execute(`
       CREATE TABLE IF NOT EXISTS assets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         type TEXT NOT NULL,
@@ -65,7 +86,7 @@ async function initDb() {
     `);
 
     // Settings table
-    await db.execute(`
+    await database.execute(`
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
@@ -73,7 +94,7 @@ async function initDb() {
     `);
 
     // Users table
-    await db.execute(`
+    await database.execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE NOT NULL,
@@ -82,7 +103,7 @@ async function initDb() {
     `);
 
     // Leads table
-    await db.execute(`
+    await database.execute(`
       CREATE TABLE IF NOT EXISTS leads (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -92,21 +113,21 @@ async function initDb() {
     `);
 
     // Seed defaults if needed
-    const settingsCheck = await db.execute("SELECT count(*) as count FROM settings");
+    const settingsCheck = await database.execute("SELECT count(*) as count FROM settings");
     if (Number(settingsCheck.rows[0].count) === 0) {
-      await db.execute({
+      await database.execute({
         sql: "INSERT INTO settings (key, value) VALUES (?, ?)",
         args: ["whatsapp", "5585987582159"]
       });
-      await db.execute({
+      await database.execute({
         sql: "INSERT INTO settings (key, value) VALUES (?, ?)",
         args: ["logo_url", "/logo-horizontal.png"]
       });
     }
 
-    const usersCheck = await db.execute("SELECT count(*) as count FROM users");
+    const usersCheck = await database.execute("SELECT count(*) as count FROM users");
     if (Number(usersCheck.rows[0].count) === 0) {
-      await db.execute({
+      await database.execute({
         sql: "INSERT INTO users (email, password) VALUES (?, ?)",
         args: ["admin@admin.com", "admin123"]
       });
