@@ -74,12 +74,18 @@ export default function Admin() {
           setAuthenticated(true);
           setUserEmail(data.email);
         } else {
-          setLoginError(data.error || "Credenciais inválidas");
+          const detailStr = data.details ? ` (${data.details})` : "";
+          setLoginError((data.error || "Credenciais inválidas") + detailStr);
         }
       } else {
         const text = await res.text();
         console.error("Non-JSON response:", text);
-        setLoginError(`Erro do servidor (${res.status}). O backend pode não estar configurado corretamente.`);
+        try {
+          const json = JSON.parse(text);
+          setLoginError(`${json.error || 'Erro'} ${json.details ? ': ' + json.details : ''}`);
+        } catch {
+          setLoginError(`Erro do servidor (${res.status}). Verifique as configurações do banco de dados.`);
+        }
       }
     } catch (err) {
       console.error("Login fetch error:", err);

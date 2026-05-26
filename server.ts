@@ -25,9 +25,12 @@ const db = createClient({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+let dbInitError: string | null = null;
+
 // Function to initialize database
 async function initDb() {
   try {
+    console.log("Initializing database...");
     // Categories table
     await db.execute(`
       CREATE TABLE IF NOT EXISTS categories (
@@ -96,11 +99,23 @@ async function initDb() {
       });
     }
 
-    console.log("Database initialized");
-  } catch (error) {
+    console.log("Database initialized successfully");
+    dbInitError = null;
+  } catch (error: any) {
     console.error("Failed to initialize database:", error);
+    dbInitError = error.message;
   }
 }
+
+// API routes go here FIRST
+app.get("/api/health", async (req, res) => {
+  try {
+    const result = await db.execute("SELECT 1 as ok");
+    res.json({ status: "ok", database: "connected", result: result.rows[0], initError: dbInitError });
+  } catch (error: any) {
+    res.status(500).json({ status: "error", database: "disconnected", error: error.message, initError: dbInitError });
+  }
+});
 
 // Auth Endpoints
 app.post("/api/login", async (req, res) => {
@@ -115,8 +130,9 @@ app.post("/api/login", async (req, res) => {
     } else {
       res.status(401).json({ error: "Credenciais inválidas" });
     }
-  } catch (error) {
-    res.status(500).json({ error: "Erro no login" });
+  } catch (error: any) {
+    console.error("Login Error:", error);
+    res.status(500).json({ error: "Erro no login", details: error.message });
   }
 });
 
@@ -152,8 +168,9 @@ app.get("/api/settings", async (req, res) => {
       return acc;
     }, {});
     res.json(settings);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch settings" });
+  } catch (error: any) {
+    console.error("Fetch Settings Error:", error);
+    res.status(500).json({ error: "Failed to fetch settings", details: error.message });
   }
 });
 
