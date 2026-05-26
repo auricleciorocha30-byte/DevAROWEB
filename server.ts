@@ -273,14 +273,22 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
+    // API routes are already handled above
     app.get("*", (req, res) => {
+      // Don't intercept API calls with the SPA fallback
+      if (req.url.startsWith('/api/')) {
+        return res.status(404).json({ error: "Endpoint não encontrado" });
+      }
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  // Only listen if not on Vercel
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 }
 
 startServer().catch(err => {

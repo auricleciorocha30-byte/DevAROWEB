@@ -66,15 +66,24 @@ export default function Admin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setAuthenticated(true);
-        setUserEmail(data.email);
+      
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setAuthenticated(true);
+          setUserEmail(data.email);
+        } else {
+          setLoginError(data.error || "Credenciais inválidas");
+        }
       } else {
-        setLoginError(data.error || "Credenciais inválidas");
+        const text = await res.text();
+        console.error("Non-JSON response:", text);
+        setLoginError(`Erro do servidor (${res.status}). O backend pode não estar configurado corretamente.`);
       }
-    } catch {
-      setLoginError("Erro de conexão ao servidor");
+    } catch (err) {
+      console.error("Login fetch error:", err);
+      setLoginError("Erro de conexão ao servidor. Verifique se o backend está rodando.");
     }
   };
 
