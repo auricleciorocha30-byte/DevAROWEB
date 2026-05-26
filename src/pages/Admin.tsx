@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Asset, Category, Lead, Settings } from "../types";
 import { LogOut, Trash2, Plus, GripVertical, Download, Link as LinkIcon, Edit2, Play, Image as ImageIcon, Tags, Users, Lock } from "lucide-react";
 import { Link } from "react-router-dom";

@@ -10,9 +10,16 @@ const app = express();
 const PORT = 3000;
 
 // Turso client setup
+const dbUrl = process.env.TURSO_DATABASE_URL;
+const dbToken = process.env.TURSO_AUTH_TOKEN;
+
+if (!dbUrl) {
+  console.warn("⚠️ TURSO_DATABASE_URL is not defined. The application might not function correctly.");
+}
+
 const db = createClient({
-  url: process.env.TURSO_DATABASE_URL || "",
-  authToken: process.env.TURSO_AUTH_TOKEN || "",
+  url: dbUrl || "file:local.db", // Fallback to local file if URL is missing
+  authToken: dbToken || "",
 });
 
 app.use(express.json({ limit: '50mb' }));
@@ -253,9 +260,10 @@ app.get("/api/leads", async (req, res) => {
   }
 });
 
-// Middleware for development/production
-async function setupFullApp() {
-  await initDb(); // Proactively create table
+// Final server startup
+async function startServer() {
+  await initDb();
+  
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -269,17 +277,14 @@ async function setupFullApp() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
 }
 
-if (!process.env.VERCEL) {
-  setupFullApp().then(() => {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
-  });
-} else {
-  // On Vercel, just initDb (asynchronously)
-  initDb();
-}
+startServer().catch(err => {
+  console.error("Failed to start server:", err);
+});
 
 export default app;

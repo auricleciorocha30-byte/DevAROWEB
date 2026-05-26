@@ -6,7 +6,7 @@ import {
   Coins, Search, Barcode, Wallet, History, FileText, Image as ImageIcon, 
   Film, Tags, Percent, SmartphoneNfc, Receipt
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Asset, Settings } from "../types";
 
 const DynamicGallery = ({ assets }: { assets: Asset[] }) => {

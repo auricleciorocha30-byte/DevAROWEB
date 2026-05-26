@@ -2,5 +2,5 @@
   "name": "DevARO - Tecnologia em Movimento SITE",
   "description": "Sistema de gestão em nuvem para empresas e negócios. Cardápio digital, PDV, KDS e gestão completa.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
