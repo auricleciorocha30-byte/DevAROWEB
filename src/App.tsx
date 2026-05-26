@@ -49,7 +49,7 @@ const GALLERY_ASSETS: Asset[] = [
   {
     id: 1,
     type: "photo",
-    url: "https://storage.googleapis.com/static.ai.studio/attachments/a380962b-6569-42b7-a36f-e3acb40fc3c1/input_file_4.png",
+    url: "/pdv-mobile.jpg",
     title: "PDV Versão Mobile",
     category: "PDV Mobile",
     created_at: new Date().toISOString()
@@ -57,7 +57,7 @@ const GALLERY_ASSETS: Asset[] = [
   {
     id: 2,
     type: "photo",
-    url: "https://storage.googleapis.com/static.ai.studio/attachments/a380962b-6569-42b7-a36f-e3acb40fc3c1/input_file_3.png",
+    url: "/mapa-mesas.png",
     title: "Mapa de Mesas",
     category: "Painel Atendente",
     created_at: new Date().toISOString()
@@ -65,7 +65,7 @@ const GALLERY_ASSETS: Asset[] = [
   {
     id: 3,
     type: "photo",
-    url: "https://storage.googleapis.com/static.ai.studio/attachments/a380962b-6569-42b7-a36f-e3acb40fc3c1/input_file_0.png",
+    url: "/pedidos-ativos.png",
     title: "Pedidos Ativos",
     category: "Painel Atendente",
     created_at: new Date().toISOString()
@@ -73,7 +73,7 @@ const GALLERY_ASSETS: Asset[] = [
   {
     id: 4,
     type: "photo",
-    url: "https://storage.googleapis.com/static.ai.studio/attachments/a380962b-6569-42b7-a36f-e3acb40fc3c1/input_file_1.png",
+    url: "/gestao-comanda.png",
     title: "Gestão de Comanda",
     category: "Controle de Mesa",
     created_at: new Date().toISOString()
@@ -81,7 +81,7 @@ const GALLERY_ASSETS: Asset[] = [
   {
     id: 5,
     type: "photo",
-    url: "https://storage.googleapis.com/static.ai.studio/attachments/a380962b-6569-42b7-a36f-e3acb40fc3c1/input_file_2.png",
+    url: "/painel-admin.png",
     title: "Painel Administrativo",
     category: "Gestão",
     created_at: new Date().toISOString()
@@ -89,7 +89,7 @@ const GALLERY_ASSETS: Asset[] = [
   {
     id: 6,
     type: "video",
-    url: "https://storage.googleapis.com/static.ai.studio/attachments/a380962b-6569-42b7-a36f-e3acb40fc3c1/input_file_5.mp4",
+    url: "/menu-digital.mp4",
     title: "Demonstração Menu Digital",
     category: "Menu Digital",
     created_at: new Date().toISOString()
@@ -177,8 +177,8 @@ const DynamicGallery = () => {
   );
 };
 
-const LOGO_HORIZONTAL = "https://storage.googleapis.com/static.ai.studio/attachments/4fcb8b20-1df3-4c90-880c-e2f494a8677f/input_file_0.png";
-const LOGO_ICON = "https://storage.googleapis.com/static.ai.studio/attachments/80708660-8f9f-4318-9710-44445853f938/DevARO_Icon.png";
+const LOGO_HORIZONTAL = "/logo-horizontal.png";
+const LOGO_ICON = "/logo-icon.png";
 
 const Logo = ({ type = "horizontal", className = "" }: { type?: "horizontal" | "icon", className?: string }) => {
   const [error, setError] = useState(false);
