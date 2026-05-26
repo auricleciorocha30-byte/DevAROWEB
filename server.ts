@@ -39,28 +39,28 @@ async function initDb() {
       await db.execute("ALTER TABLE assets ADD COLUMN category TEXT NOT NULL DEFAULT 'Geral'");
     }
 
-    // Seed with the provided assets if empty
-    const check = await db.execute("SELECT count(*) as count FROM assets");
-    if (Number(check.rows[0].count) !== 6) { // Force re-seed for the 6 items
-      await db.execute("DELETE FROM assets");
-      
-      const seedAssets = [
-        ["photo", "https://storage.googleapis.com/static.ai.studio/attachments/4fcb8b20-1df3-4c90-880c-e2f494a8677f/input_file_0.png", "PDV Versão Mobile", "PDV Mobile"],
-        ["photo", "https://storage.googleapis.com/static.ai.studio/attachments/4fcb8b20-1df3-4c90-880c-e2f494a8677f/input_file_1.png", "Mapa de Mesas", "Painel Atendente"],
-        ["photo", "https://storage.googleapis.com/static.ai.studio/attachments/4fcb8b20-1df3-4c90-880c-e2f494a8677f/input_file_2.png", "Pedidos Ativos", "Painel Atendente"],
-        ["photo", "https://storage.googleapis.com/static.ai.studio/attachments/4fcb8b20-1df3-4c90-880c-e2f494a8677f/input_file_3.png", "Gestão de Comanda", "Painel Atendente"],
-        ["photo", "https://images.unsplash.com/photo-1617347454431-f49d7ff5c3b1?auto=format&fit=crop&q=80&w=800", "Portal do Entregador - Dashboard", "Portal do Entregador"],
-        ["video", "https://storage.googleapis.com/static.ai.studio/attachments/ecbd09a5-a0ca-4766-9ab5-d6ca8e1c6af3/input_file_0.mp4", "Menu Digital DevARO", "Menu Digital"],
-      ];
+    // Seed with current context IDs
+    const currentIdContext = "a380962b-6569-42b7-a36f-e3acb40fc3c1";
+    
+    // Always re-seed with clean URLs (no extensions for better proxy compatibility)
+    await db.execute("DELETE FROM assets");
+    
+    const seedAssets = [
+      ["photo", `https://storage.googleapis.com/static.ai.studio/attachments/${currentIdContext}/input_file_4`, "PDV Versão Mobile", "PDV Mobile"],
+      ["photo", `https://storage.googleapis.com/static.ai.studio/attachments/${currentIdContext}/input_file_3`, "Mapa de Mesas", "Painel Atendente"],
+      ["photo", `https://storage.googleapis.com/static.ai.studio/attachments/${currentIdContext}/input_file_0`, "Pedidos Ativos", "Painel Atendente"],
+      ["photo", `https://storage.googleapis.com/static.ai.studio/attachments/${currentIdContext}/input_file_1`, "Gestão de Comanda", "Controle de Mesa"],
+      ["photo", `https://storage.googleapis.com/static.ai.studio/attachments/${currentIdContext}/input_file_2`, "Painel Administrativo", "Gestão"],
+      ["video", `https://storage.googleapis.com/static.ai.studio/attachments/${currentIdContext}/input_file_5`, "Demonstração Menu Digital", "Menu Digital"],
+    ];
 
-      for (const asset of seedAssets) {
-        await db.execute({
-          sql: "INSERT INTO assets (type, url, title, category) VALUES (?, ?, ?, ?)",
-          args: asset
-        });
-      }
-      console.log("Database seeded with gallery assets.");
+    for (const asset of seedAssets) {
+      await db.execute({
+        sql: "INSERT INTO assets (type, url, title, category) VALUES (?, ?, ?, ?)",
+        args: asset
+      });
     }
+    console.log("Database seeded with clean attachment URLs.");
 
     console.log("Database initialized (assets table ready)");
   } catch (error) {

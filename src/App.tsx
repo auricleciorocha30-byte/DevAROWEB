@@ -113,7 +113,7 @@ const DynamicGallery = () => {
                     src={asset.url} 
                     alt={asset.title} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
                   />
                 ) : (
                   <video 
@@ -124,6 +124,7 @@ const DynamicGallery = () => {
                     muted
                   >
                     <source src={asset.url} type="video/mp4" />
+                    <source src={asset.url} type="video/webm" />
                     Seu navegador não suporta vídeos.
                   </video>
                 )}
@@ -144,8 +145,8 @@ const DynamicGallery = () => {
   );
 };
 
-const LOGO_HORIZONTAL = "https://storage.googleapis.com/static.ai.studio/attachments/a380962b-6569-42b7-a36f-e3acb40fc3c1/input_file_0.png";
-const LOGO_ICON = "https://storage.googleapis.com/static.ai.studio/attachments/80708660-8f9f-4318-9710-44445853f938/DevARO_Icon.png";
+const LOGO_HORIZONTAL = "https://storage.googleapis.com/static.ai.studio/attachments/4fcb8b20-1df3-4c90-880c-e2f494a8677f/input_file_0";
+const LOGO_ICON = "https://storage.googleapis.com/static.ai.studio/attachments/80708660-8f9f-4318-9710-44445853f938/DevARO_Icon";
 
 const Logo = ({ type = "horizontal", className = "" }: { type?: "horizontal" | "icon", className?: string }) => {
   const [error, setError] = useState(false);
@@ -166,7 +167,7 @@ const Logo = ({ type = "horizontal", className = "" }: { type?: "horizontal" | "
       alt="DevARO Logo" 
       className={className}
       onError={() => setError(true)}
-      referrerPolicy="no-referrer"
+      crossOrigin="anonymous"
     />
   );
 };
