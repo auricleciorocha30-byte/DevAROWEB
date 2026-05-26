@@ -26,11 +26,123 @@ import {
   Barcode,
   Wallet,
   History,
-  FileText
+  FileText,
+  Image as ImageIcon,
+  Film,
+  Tags,
+  Percent,
+  SmartphoneNfc,
+  Receipt
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-const LOGO_HORIZONTAL = "https://storage.googleapis.com/static.ai.studio/attachments/80708660-8f9f-4318-9710-44445853f938/DevARO_Tecnologia_em_movimento.png";
+interface Asset {
+  id: number;
+  type: "photo" | "video";
+  url: string;
+  title: string;
+  category: string;
+  created_at: string;
+}
+
+const DynamicGallery = () => {
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState("Todos");
+
+  useEffect(() => {
+    fetch("/api/assets")
+      .then((res) => res.json())
+      .then((data) => {
+        setAssets(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error fetching assets:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  const categories = ["Todos", ...Array.from(new Set(assets.map(a => a.category)))];
+  const filteredAssets = activeCategory === "Todos" 
+    ? assets 
+    : assets.filter(a => a.category === activeCategory);
+
+  if (loading) return <div className="text-center py-20 text-gray-400">Carregando galeria...</div>;
+  if (assets.length === 0) return null;
+
+  return (
+    <section id="galeria" className="py-24 px-6 bg-brand-blue/5">
+      <div className="max-w-7xl mx-auto">
+        <SectionTitle 
+          subtitle="Showcase" 
+          title="Nossa Tecnologia em Detalhes" 
+          description="Explore as interfaces e funcionalidades que transformam a gestão do seu negócio."
+        />
+
+        {/* Category Tabs */}
+        <div className="flex flex-wrap gap-2 mb-12">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                activeCategory === cat 
+                ? "bg-brand-cyan text-brand-dark shadow-lg shadow-brand-cyan/20" 
+                : "glass hover:bg-white/10 text-gray-400"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {filteredAssets.map((asset) => (
+            <motion.div 
+              key={asset.id}
+              layout
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="glass overflow-hidden rounded-[2rem] group border-white/5 hover:border-brand-cyan/30 transition-colors"
+            >
+              <div className="aspect-[9/16] md:aspect-video relative bg-brand-dark/40 overflow-hidden">
+                {asset.type === "photo" ? (
+                  <img 
+                    src={asset.url} 
+                    alt={asset.title} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                ) : (
+                  <video 
+                    className="w-full h-full object-cover"
+                    controls
+                    playsInline
+                    preload="auto"
+                  >
+                    <source src={asset.url} type="video/mp4" />
+                    Seu navegador não suporta vídeos.
+                  </video>
+                )}
+                <div className="absolute top-4 right-4 bg-brand-dark/80 backdrop-blur-xl p-2.5 rounded-2xl border border-white/10">
+                  {asset.type === "photo" ? <ImageIcon size={20} className="text-brand-cyan" /> : <Film size={20} className="text-brand-cyan" />}
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <div className="p-8">
+                <span className="text-brand-cyan text-xs font-bold uppercase tracking-widest mb-2 block">{asset.category}</span>
+                <h4 className="text-xl font-bold font-display">{asset.title}</h4>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const LOGO_HORIZONTAL = "https://storage.googleapis.com/static.ai.studio/attachments/a380962b-6569-42b7-a36f-e3acb40fc3c1/input_file_0.png";
 const LOGO_ICON = "https://storage.googleapis.com/static.ai.studio/attachments/80708660-8f9f-4318-9710-44445853f938/DevARO_Icon.png";
 
 const Logo = ({ type = "horizontal", className = "" }: { type?: "horizontal" | "icon", className?: string }) => {
@@ -102,6 +214,7 @@ export default function App() {
             <button onClick={() => scrollToSection("cliente")} className="text-sm font-medium hover:text-brand-cyan transition-colors">Cliente</button>
             <button onClick={() => scrollToSection("operacional")} className="text-sm font-medium hover:text-brand-cyan transition-colors">Operacional</button>
             <button onClick={() => scrollToSection("pdv")} className="text-sm font-medium hover:text-brand-cyan transition-colors">PDV</button>
+            <button onClick={() => scrollToSection("galeria")} className="text-sm font-medium hover:text-brand-cyan transition-colors">Galeria</button>
             <button onClick={() => scrollToSection("admin")} className="text-sm font-medium hover:text-brand-cyan transition-colors">Admin</button>
             <button onClick={() => scrollToSection("tecnico")} className="text-sm font-medium hover:text-brand-cyan transition-colors">Diferenciais</button>
             <a 
@@ -128,6 +241,7 @@ export default function App() {
             <button onClick={() => scrollToSection("cliente")} className="text-left py-2">Cliente</button>
             <button onClick={() => scrollToSection("operacional")} className="text-left py-2">Operacional</button>
             <button onClick={() => scrollToSection("pdv")} className="text-left py-2">PDV</button>
+            <button onClick={() => scrollToSection("galeria")} className="text-left py-2">Galeria</button>
             <button onClick={() => scrollToSection("admin")} className="text-left py-2">Admin</button>
             <button onClick={() => scrollToSection("tecnico")} className="text-left py-2">Diferenciais</button>
             <a 
@@ -199,6 +313,16 @@ export default function App() {
               description="Atendimento local e a distância (entrega/retirada) com interface intuitiva e fotos reais."
             />
             <FeatureCard 
+              icon={Tags} 
+              title="Opções & Complementos" 
+              description="Personalização total dos produtos com opções de tamanhos, bordas e complementos extras."
+            />
+            <FeatureCard 
+              icon={Percent} 
+              title="Promoções de Desconto" 
+              description="Gestão de descontos agressivos por item ou categoria, ideal para ofertas relâmpago."
+            />
+            <FeatureCard 
               icon={QrCode} 
               title="Autoatendimento QR Code" 
               description="Acesso rápido ao cardápio vinculado diretamente ao cliente, sem necessidade de intermediários."
@@ -207,11 +331,6 @@ export default function App() {
               icon={Truck} 
               title="Cálculo de Frete Inteligente" 
               description="Cálculo automático de frete com regras flexíveis definidas pelo administrador."
-            />
-            <FeatureCard 
-              icon={CheckCircle2} 
-              title="Programa de Fidelidade" 
-              description="Gestão automática de pontos e benefícios para fidelizar seus clientes recorrentes."
             />
             <FeatureCard 
               icon={Monitor} 
@@ -310,7 +429,8 @@ export default function App() {
               </div>
               <ul className="space-y-4 text-gray-400">
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-brand-cyan shrink-0" /> <span><strong className="text-white">Pagamentos Mistos:</strong> Use múltiplos métodos em uma única conta.</span></li>
-                <li className="flex gap-3"><CheckCircle2 size={18} className="text-brand-cyan shrink-0" /> <span><strong className="text-white">Modalidades:</strong> PIX, Cartões, Dinheiro, Vales e Cashback.</span></li>
+                <li className="flex gap-3"><CheckCircle2 size={18} className="text-brand-cyan shrink-0" /> <span><strong className="text-white">PagBank Digital:</strong> Integração direta para pagamentos digitais seguros e rápidos.</span></li>
+                <li className="flex gap-3"><CheckCircle2 size={18} className="text-brand-cyan shrink-0" /> <span><strong className="text-white">Modalidades:</strong> PIX, Cartões, Dinheiro e Cashback.</span></li>
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-brand-cyan shrink-0" /> <span><strong className="text-white">Calculadora de Troco:</strong> Agilidade garantida no recebimento em dinheiro.</span></li>
               </ul>
             </div>
@@ -325,7 +445,7 @@ export default function App() {
               </div>
               <ul className="space-y-4 text-gray-400">
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-brand-cyan shrink-0" /> <span><strong className="text-white">Turnos:</strong> Controle rigoroso de abertura e fechamento com conferência.</span></li>
-                <li className="flex gap-3"><CheckCircle2 size={18} className="text-brand-cyan shrink-0" /> <span><strong className="text-white">Sangria e Suprimento:</strong> Registro de movimentações com justificativa.</span></li>
+                <li className="flex gap-3"><CheckCircle2 size={18} className="text-brand-cyan shrink-0" /> <span><strong className="text-white">Emissão de NF-e:</strong> Integração via API Focus NFe para emissão automática de notas.</span></li>
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-brand-cyan shrink-0" /> <span><strong className="text-white">Relatórios:</strong> Resumo detalhado por método de pagamento e vendas.</span></li>
               </ul>
             </div>
@@ -362,6 +482,9 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      <DynamicGallery />
+
 
       {/* 3. Administração e Estratégia */}
       <section id="admin" className="py-24 px-6 bg-white/[0.02]">
