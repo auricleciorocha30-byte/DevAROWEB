@@ -3,9 +3,6 @@ import { Asset, Category, Lead, Settings } from "../types";
 import { LogOut, Trash2, Plus, GripVertical, Download, Link as LinkIcon, Edit2, Play, Image as ImageIcon, Tags, Users, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { signInWithEmailAndPassword, updatePassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, query, orderBy } from "firebase/firestore";
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -41,20 +38,17 @@ export default function Admin() {
   const [fileKey, setFileKey] = useState(Date.now());
 
   // Password change states
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setAuthChecked(true);
-      if (user) {
-        setAuthenticated(true);
-        setUserEmail(user.email || "");
-      } else {
-        setAuthenticated(false);
-      }
-    });
-    return () => unsubscribe();
+    const savedEmail = localStorage.getItem("adminEmail");
+    if (savedEmail) {
+      setAuthenticated(true);
+      setUserEmail(savedEmail);
+    }
+    setAuthChecked(true);
   }, []);
 
   useEffect(() => {
@@ -83,14 +77,28 @@ export default function Admin() {
     e.preventDefault();
     setLoginError("");
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAuthenticated(true);
+        setUserEmail(data.email);
+        localStorage.setItem("adminEmail", data.email);
+      } else {
+        setLoginError(data.error || "Credenciais inválidas");
+      }
     } catch {
       setLoginError("Credenciais inválidas");
     }
   };
 
   const handleLogout = async () => {
-    await signOut(auth);
+    setAuthenticated(false);
+    setUserEmail("");
+    localStorage.removeItem("adminEmail");
   };
 
   // --- Actions ---
@@ -102,7 +110,7 @@ export default function Admin() {
     fetchData();
   };
 
-  const handleDeleteCategory = async (id: number) => {
+  const handleDeleteCategory = async (id: number | string) => {
     if(!confirm("Tem certeza que quer excluir esta categoria?")) return;
     await fetch(`/api/categories/${id}`, { method: "DELETE" });
     fetchData();
@@ -117,7 +125,7 @@ export default function Admin() {
     fetchData();
   };
 
-  const handleDeleteAsset = async (id: number) => {
+  const handleDeleteAsset = async (id: number | string) => {
     if(!confirm("Certeza que deseja excluir esta mídia?")) return;
     await fetch(`/api/assets/${id}`, { method: "DELETE" });
     fetchData();
@@ -138,19 +146,23 @@ export default function Admin() {
     e.preventDefault();
     setPasswordMessage("");
     try {
-      if (auth.currentUser) {
-        await updatePassword(auth.currentUser, newPassword);
+      const res = await fetch("/api/users/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail, currentPassword, newPassword })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
         setPasswordMessage("Senha alterada com sucesso!");
+        setCurrentPassword("");
         setNewPassword("");
+      } else {
+        setPasswordMessage(data.error || "Erro ao alterar a senha");
       }
     } catch {
-      setPasswordMessage("Erro alterar a senha, exija fazer login novamente.");
+      setPasswordMessage("Erro de conexão");
     }
   };
-
-  if (!authChecked) {
-    return <div className="min-h-screen bg-brand-dark flex items-center justify-center text-white">Carregando...</div>;
-  }
 
   if (!authenticated) {
     return (

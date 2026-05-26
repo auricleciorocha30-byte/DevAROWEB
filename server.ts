@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { createClient } from "@libsql/client";
+import { createClient } from "@libsql/client/web";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -49,6 +49,15 @@ async function initDb() {
       )
     `);
 
+    // Users table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+      )
+    `);
+
     // Leads table
     await db.execute(`
       CREATE TABLE IF NOT EXISTS leads (
@@ -72,11 +81,57 @@ async function initDb() {
       });
     }
 
+    const usersCheck = await db.execute("SELECT count(*) as count FROM users");
+    if (Number(usersCheck.rows[0].count) === 0) {
+      await db.execute({
+        sql: "INSERT INTO users (email, password) VALUES (?, ?)",
+        args: ["admin@admin.com", "admin123"]
+      });
+    }
+
     console.log("Database initialized");
   } catch (error) {
     console.error("Failed to initialize database:", error);
   }
 }
+
+// Auth Endpoints
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const result = await db.execute({
+      sql: "SELECT * FROM users WHERE email = ? AND password = ?",
+      args: [email, password]
+    });
+    if (result.rows.length > 0) {
+      res.json({ success: true, email: result.rows[0].email });
+    } else {
+      res.status(401).json({ error: "Credenciais inválidas" });
+    }
+  } catch (error) {
+    res.status(500).json({ error: "Erro no login" });
+  }
+});
+
+app.post("/api/users/password", async (req, res) => {
+  try {
+    const { email, newPassword, currentPassword } = req.body;
+    const verify = await db.execute({
+      sql: "SELECT * FROM users WHERE email = ? AND password = ?",
+      args: [email, currentPassword]
+    });
+    if (verify.rows.length === 0) {
+      return res.status(401).json({ error: "Senha atual incorreta." });
+    }
+    await db.execute({
+      sql: "UPDATE users SET password = ? WHERE email = ?",
+      args: [newPassword, email]
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao trocar de senha" });
+  }
+});
 
 // Settings Endpoints
 app.get("/api/settings", async (req, res) => {
