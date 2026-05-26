@@ -63,7 +63,7 @@ const DynamicGallery = () => {
       });
   }, []);
 
-  const categories = ["Todos", ...Array.from(new Set(assets.map(a => a.category)))];
+  const categories = ["Todos", ...Array.from(new Set(assets.map(a => a.category))).sort()];
   const filteredAssets = activeCategory === "Todos" 
     ? assets 
     : assets.filter(a => a.category === activeCategory);
@@ -113,6 +113,7 @@ const DynamicGallery = () => {
                     src={asset.url} 
                     alt={asset.title} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <video 
@@ -120,6 +121,7 @@ const DynamicGallery = () => {
                     controls
                     playsInline
                     preload="auto"
+                    muted
                   >
                     <source src={asset.url} type="video/mp4" />
                     Seu navegador não suporta vídeos.

@@ -41,7 +41,7 @@ async function initDb() {
 
     // Seed with the provided assets if empty
     const check = await db.execute("SELECT count(*) as count FROM assets");
-    if (Number(check.rows[0].count) !== 5) { // Force re-seed for the 5 requested items
+    if (Number(check.rows[0].count) !== 6) { // Force re-seed for the 6 items
       await db.execute("DELETE FROM assets");
       
       const seedAssets = [
@@ -49,6 +49,7 @@ async function initDb() {
         ["photo", "https://storage.googleapis.com/static.ai.studio/attachments/4fcb8b20-1df3-4c90-880c-e2f494a8677f/input_file_1.png", "Mapa de Mesas", "Painel Atendente"],
         ["photo", "https://storage.googleapis.com/static.ai.studio/attachments/4fcb8b20-1df3-4c90-880c-e2f494a8677f/input_file_2.png", "Pedidos Ativos", "Painel Atendente"],
         ["photo", "https://storage.googleapis.com/static.ai.studio/attachments/4fcb8b20-1df3-4c90-880c-e2f494a8677f/input_file_3.png", "Gestão de Comanda", "Painel Atendente"],
+        ["photo", "https://images.unsplash.com/photo-1617347454431-f49d7ff5c3b1?auto=format&fit=crop&q=80&w=800", "Portal do Entregador - Dashboard", "Portal do Entregador"],
         ["video", "https://storage.googleapis.com/static.ai.studio/attachments/ecbd09a5-a0ca-4766-9ab5-d6ca8e1c6af3/input_file_0.mp4", "Menu Digital DevARO", "Menu Digital"],
       ];
 
