@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { createClient } from "@libsql/client";
 import dotenv from "dotenv";
 
@@ -24,7 +23,7 @@ const dbToken = process.env.TURSO_AUTH_TOKEN;
 
 // Only use file fallback if NOT on Vercel or other serverless env
 const isVercel = !!process.env.VERCEL;
-const defaultDbUrl = isVercel ? "" : "file:local.db";
+const defaultDbUrl = isVercel ? "libsql://dummy-url-to-prevent-crash.turso.io" : "file:local.db";
 
 if (!dbUrl && isVercel) {
   console.error("❌ CRITICAL: No database URL provided in Vercel environment.");
@@ -334,7 +333,8 @@ async function startServer() {
   if (!isProd && !isVercel) {
     console.log("Setting up Vite middleware for development...");
     try {
-      const vite = await createViteServer({
+      const viteModule = await import("vite");
+      const vite = await viteModule.createServer({
         server: { middlewareMode: true },
         appType: "spa",
       });
