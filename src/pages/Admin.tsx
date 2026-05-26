@@ -48,14 +48,28 @@ export default function Admin() {
     }
   }, [authenticated]);
 
-  const checkHealth = async () => {
+  const checkHealth = async (retries = 3) => {
     try {
+      console.log(`Checking health (retries left: ${retries})...`);
       const res = await fetch("/api/health");
+      if (!res.ok) {
+        // Try fallback ping
+        const pingRes = await fetch("/api/ping");
+        if (pingRes.ok) {
+          setServerHealth({ status: "partial", error: "DB Health failed, but API is alive", details: `Status ${res.status}` });
+          return;
+        }
+        throw new Error(`Status ${res.status}`);
+      }
       const data = await res.json();
       setServerHealth(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Health check failed:", err);
-      setServerHealth({ status: "error", error: "Não foi possível conectar ao servidor" });
+      if (retries > 0) {
+        setTimeout(() => checkHealth(retries - 1), 1000);
+      } else {
+        setServerHealth({ status: "error", error: `Erro de rede ou servidor: ${err.message}` });
+      }
     }
   };
 

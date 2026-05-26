@@ -5,9 +5,18 @@ import { createClient } from "@libsql/client";
 import dotenv from "dotenv";
 
 dotenv.config();
+console.log("Environment check:", { 
+  hasUrl: !!process.env.TURSO_DATABASE_URL, 
+  hasToken: !!process.env.TURSO_AUTH_TOKEN 
+});
 
 const app = express();
 const PORT = 3000;
+
+// Simple ping endpoint (zero dependencies)
+app.get("/api/ping", (req, res) => {
+  res.json({ pong: true, time: new Date().toISOString() });
+});
 
 // Turso client setup
 const dbUrl = process.env.TURSO_DATABASE_URL;
@@ -280,20 +289,31 @@ app.get("/api/leads", async (req, res) => {
 
 // Final server startup
 async function startServer() {
-  await initDb();
+  console.log("Starting server process...");
   
-  if (process.env.NODE_ENV !== "production") {
+  // Initialize DB in background or catch early
+  initDb().then(() => {
+    console.log("Database initialization finished.");
+  }).catch(err => {
+    console.error("Database initialization CRITICAL FAILURE:", err);
+    dbInitError = err.message;
+  });
+  
+  const isProd = process.env.NODE_ENV === "production";
+  console.log(`Mode: ${isProd ? "production" : "development"}`);
+
+  if (!isProd) {
+    console.log("Setting up Vite middleware...");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
+    console.log("Setting up production static serving...");
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    // API routes are already handled above
     app.get("*", (req, res) => {
-      // Don't intercept API calls with the SPA fallback
       if (req.url.startsWith('/api/')) {
         return res.status(404).json({ error: "Endpoint não encontrado" });
       }
@@ -301,12 +321,9 @@ async function startServer() {
     });
   }
 
-  // Only listen if not on Vercel
-  if (!process.env.VERCEL) {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
-  }
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+  });
 }
 
 startServer().catch(err => {
