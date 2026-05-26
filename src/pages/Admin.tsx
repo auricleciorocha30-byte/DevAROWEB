@@ -3,6 +3,9 @@ import { Asset, Category, Lead, Settings } from "../types";
 import { LogOut, Trash2, Plus, GripVertical, Download, Link as LinkIcon, Edit2, Play, Image as ImageIcon, Tags, Users, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
+import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
+import { signInWithEmailAndPassword, updatePassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, query, orderBy } from "firebase/firestore";
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -15,6 +18,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 export default function Admin() {
   const [authenticated, setAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,6 +30,7 @@ export default function Admin() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [settings, setSettings] = useState<Settings>({});
+  const [settingsId, setSettingsId] = useState<string>("global");
 
   // Form states
   const [newCatName, setNewCatName] = useState("");
@@ -36,9 +41,21 @@ export default function Admin() {
   const [fileKey, setFileKey] = useState(Date.now());
 
   // Password change states
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setAuthChecked(true);
+      if (user) {
+        setAuthenticated(true);
+        setUserEmail(user.email || "");
+      } else {
+        setAuthenticated(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (authenticated) {
@@ -47,35 +64,33 @@ export default function Admin() {
   }, [authenticated]);
 
   const fetchData = async () => {
-    fetch("/api/categories").then(res => res.json()).then(setCategories);
-    fetch("/api/assets").then(res => res.json()).then(setAssets);
-    fetch("/api/leads").then(res => res.json()).then(setLeads);
-    fetch("/api/settings").then(res => res.json()).then(data => {
-      setSettings(data);
-      setSetWhats(data.whatsapp || "");
-      setSetLogo(data.logo_url || "");
-    });
+    try {
+      fetch("/api/categories").then(res => res.json()).then(setCategories);
+      fetch("/api/assets").then(res => res.json()).then(setAssets);
+      fetch("/api/leads").then(res => res.json()).then(setLeads);
+      fetch("/api/settings").then(res => res.json()).then(data => {
+        setSettings(data);
+        setSetWhats(data.whatsapp || "");
+        setSetLogo(data.logo_url || "");
+      });
+    } catch (e) {
+      console.error(e);
+      // Let's not crash the UI immediately, but log it
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
     try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setAuthenticated(true);
-        setUserEmail(data.email);
-      } else {
-        setLoginError(data.error || "Credenciais inválidas");
-      }
+      await signInWithEmailAndPassword(auth, email, password);
     } catch {
-      setLoginError("Erro de conexão ao servidor");
+      setLoginError("Credenciais inválidas");
     }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
   };
 
   // --- Actions ---
@@ -123,23 +138,19 @@ export default function Admin() {
     e.preventDefault();
     setPasswordMessage("");
     try {
-      const res = await fetch("/api/users/password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, currentPassword, newPassword })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (auth.currentUser) {
+        await updatePassword(auth.currentUser, newPassword);
         setPasswordMessage("Senha alterada com sucesso!");
-        setCurrentPassword("");
         setNewPassword("");
-      } else {
-        setPasswordMessage(data.error || "Erro ao alterar a senha");
       }
     } catch {
-      setPasswordMessage("Erro de conexão");
+      setPasswordMessage("Erro alterar a senha, exija fazer login novamente.");
     }
   };
+
+  if (!authChecked) {
+    return <div className="min-h-screen bg-brand-dark flex items-center justify-center text-white">Carregando...</div>;
+  }
 
   if (!authenticated) {
     return (
@@ -186,7 +197,7 @@ export default function Admin() {
              <Link to="/site" target="_blank" className="bg-brand-blue/20 hover:bg-brand-blue/40 text-brand-cyan border border-brand-cyan/20 px-4 py-2 flex items-center gap-2 rounded-lg font-medium transition-colors">
               <LinkIcon size={18} /> Ver Site
             </Link>
-            <button onClick={() => setAuthenticated(false)} className="glass hover:bg-white/10 text-gray-300 px-4 py-2 flex items-center gap-2 rounded-lg font-medium transition-colors">
+            <button onClick={handleLogout} className="glass hover:bg-white/10 text-gray-300 px-4 py-2 flex items-center gap-2 rounded-lg font-medium transition-colors">
               <LogOut size={18} /> Sair
             </button>
           </div>
@@ -407,13 +418,12 @@ export default function Admin() {
                   )}
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-2">Senha Atual</label>
+                    <label className="block text-sm text-gray-400 mb-2">E-mail de Login</label>
                     <input 
-                      type="password" 
-                      value={currentPassword} 
-                      onChange={e => setCurrentPassword(e.target.value)} 
-                      required
-                      className="w-full bg-brand-dark/50 border border-white/10 rounded-lg px-4 py-3 text-white" 
+                      type="email" 
+                      value={userEmail} 
+                      disabled
+                      className="w-full bg-brand-dark/30 border border-white/10 rounded-lg px-4 py-3 text-gray-500" 
                     />
                   </div>
                   <div>

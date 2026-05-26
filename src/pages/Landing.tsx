@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Asset, Settings } from "../types";
+import { db, handleFirestoreError, OperationType } from "../lib/firebase";
+import { collection, getDocs, addDoc, query, orderBy } from "firebase/firestore";
 
 const DynamicGallery = ({ assets }: { assets: Asset[] }) => {
   const [activeCategory, setActiveCategory] = useState("Todos");
@@ -146,7 +148,9 @@ export default function Landing() {
 
   useEffect(() => {
     fetch("/api/assets").then(res => res.json()).then(setAssets).catch(console.error);
-    fetch("/api/settings").then(res => res.json()).then(setSettings).catch(console.error);
+    fetch("/api/settings").then(res => res.json()).then(data => {
+      setSettings(data);
+    }).catch(console.error);
   }, []);
 
   const scrollToSection = (id: string) => {
