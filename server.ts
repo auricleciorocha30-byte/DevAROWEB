@@ -119,6 +119,7 @@ app.get("/api/health", async (req, res) => {
 
 // Auth Endpoints
 app.post("/api/login", async (req, res) => {
+  console.log("Login attempt:", req.body.email);
   try {
     const { email, password } = req.body;
     const result = await db.execute({

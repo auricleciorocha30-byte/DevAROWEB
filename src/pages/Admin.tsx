@@ -26,6 +26,7 @@ export default function Admin() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [settings, setSettings] = useState<Settings>({});
+  const [serverHealth, setServerHealth] = useState<any>(null);
 
   // Form states
   const [newCatName, setNewCatName] = useState("");
@@ -41,10 +42,22 @@ export default function Admin() {
   const [passwordMessage, setPasswordMessage] = useState("");
 
   useEffect(() => {
+    checkHealth();
     if (authenticated) {
       fetchData();
     }
   }, [authenticated]);
+
+  const checkHealth = async () => {
+    try {
+      const res = await fetch("/api/health");
+      const data = await res.json();
+      setServerHealth(data);
+    } catch (err) {
+      console.error("Health check failed:", err);
+      setServerHealth({ status: "error", error: "Não foi possível conectar ao servidor" });
+    }
+  };
 
   const fetchData = async () => {
     fetch("/api/categories").then(res => res.json()).then(setCategories);
@@ -84,7 +97,7 @@ export default function Admin() {
           const json = JSON.parse(text);
           setLoginError(`${json.error || 'Erro'} ${json.details ? ': ' + json.details : ''}`);
         } catch {
-          setLoginError(`Erro do servidor (${res.status}). Verifique as configurações do banco de dados.`);
+          setLoginError(`Erro (${res.status}): ${text.substring(0, 100)}...`);
         }
       }
     } catch (err) {
@@ -165,6 +178,12 @@ export default function Admin() {
           <h2 className="text-2xl font-display font-bold text-white mb-2 relative z-10 flex items-center gap-2">
             <Lock size={24} className="text-brand-cyan" /> Acesso Admin
           </h2>
+          {serverHealth && serverHealth.status !== "ok" && (
+            <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-xs text-red-400 mb-2 relative z-10">
+              <strong>Erro no Servidor:</strong> {serverHealth.error || "Erro desconhecido"}
+              {serverHealth.initError && <p className="mt-1 opacity-70">Init: {serverHealth.initError}</p>}
+            </div>
+          )}
           {loginError && <p className="text-red-400 text-sm relative z-10">{loginError}</p>}
           
           <input 
