@@ -254,7 +254,8 @@ app.get("/api/leads", async (req, res) => {
 });
 
 // Middleware for development/production
-async function setupVite() {
+async function setupFullApp() {
+  await initDb(); // Proactively create table
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -270,9 +271,15 @@ async function setupVite() {
   }
 }
 
-setupVite().then(() => {
-  initDb(); // Proactively create table
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+if (!process.env.VERCEL) {
+  setupFullApp().then(() => {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
   });
-});
+} else {
+  // On Vercel, just initDb (asynchronously)
+  initDb();
+}
+
+export default app;
