@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
+import { createClient } from "@libsql/client";
 
 dotenv.config();
 console.log("Environment check:", { 
@@ -30,6 +31,7 @@ async function getDb() {
     const dbToken = process.env.TURSO_AUTH_TOKEN;
     
     const isVercel = !!process.env.VERCEL;
+    // For Vercel without URL, use dummy so build/function doesn't crash immediately
     const defaultDbUrl = isVercel ? "libsql://dummy-url-to-prevent-crash.turso.io" : "file:local.db";
     
     if (!dbUrl && isVercel) {
@@ -37,16 +39,6 @@ async function getDb() {
     }
 
     try {
-      let createClient;
-      if (isVercel) {
-        // Use web client for Vercel to avoid native SQLite bindings crashing the Edge/Node function
-        const mod = await import("@libsql/client/web");
-        createClient = mod.createClient;
-      } else {
-        const mod = await import("@libsql/client");
-        createClient = mod.createClient;
-      }
-
       db = createClient({
         url: dbUrl || defaultDbUrl,
         authToken: dbToken || "",
@@ -155,7 +147,8 @@ async function ensureDb() {
 app.get("/api/health", async (req, res) => {
   try {
     await ensureDb();
-    const result = await db.execute("SELECT 1 as ok");
+    const database = await getDb();
+    const result = await database.execute("SELECT 1 as ok");
     res.json({ status: "ok", database: "connected", result: result.rows[0], initError: dbInitError });
   } catch (error: any) {
     res.status(500).json({ status: "error", database: "disconnected", error: error.message, initError: dbInitError });
@@ -167,8 +160,9 @@ app.post("/api/login", async (req, res) => {
   console.log("Login attempt:", req.body.email);
   try {
     await ensureDb();
+    const database = await getDb();
     const { email, password } = req.body;
-    const result = await db.execute({
+    const result = await database.execute({
       sql: "SELECT * FROM users WHERE email = ? AND password = ?",
       args: [email, password]
     });
@@ -186,9 +180,10 @@ app.post("/api/login", async (req, res) => {
 app.post("/api/users/password", async (req, res) => {
   try {
     await ensureDb();
+    const database = await getDb();
     const { email, newPassword, currentPassword } = req.body;
     // Verify current password first
-    const verify = await db.execute({
+    const verify = await database.execute({
       sql: "SELECT * FROM users WHERE email = ? AND password = ?",
       args: [email, currentPassword]
     });
@@ -197,7 +192,7 @@ app.post("/api/users/password", async (req, res) => {
       return res.status(401).json({ error: "Senha atual incorreta." });
     }
 
-    await db.execute({
+    await database.execute({
       sql: "UPDATE users SET password = ? WHERE email = ?",
       args: [newPassword, email]
     });
@@ -211,7 +206,8 @@ app.post("/api/users/password", async (req, res) => {
 app.get("/api/settings", async (req, res) => {
   try {
     await ensureDb();
-    const result = await db.execute("SELECT * FROM settings");
+    const database = await getDb();
+    const result = await database.execute("SELECT * FROM settings");
     const settings = result.rows.reduce((acc: any, row: any) => {
       acc[row.key] = row.value;
       return acc;
@@ -226,12 +222,13 @@ app.get("/api/settings", async (req, res) => {
 app.post("/api/settings", async (req, res) => {
   try {
     await ensureDb();
+    const database = await getDb();
     const { whatsapp, logo_url } = req.body;
     if (whatsapp) {
-      await db.execute({ sql: "INSERT OR REPLACE INTO settings (key, value) VALUES ('whatsapp', ?)", args: [whatsapp] });
+      await database.execute({ sql: "INSERT OR REPLACE INTO settings (key, value) VALUES ('whatsapp', ?)", args: [whatsapp] });
     }
     if (logo_url) {
-      await db.execute({ sql: "INSERT OR REPLACE INTO settings (key, value) VALUES ('logo_url', ?)", args: [logo_url] });
+      await database.execute({ sql: "INSERT OR REPLACE INTO settings (key, value) VALUES ('logo_url', ?)", args: [logo_url] });
     }
     res.json({ success: true });
   } catch (error) {
@@ -243,7 +240,8 @@ app.post("/api/settings", async (req, res) => {
 app.get("/api/categories", async (req, res) => {
   try {
     await ensureDb();
-    const result = await db.execute("SELECT * FROM categories ORDER BY name ASC");
+    const database = await getDb();
+    const result = await database.execute("SELECT * FROM categories ORDER BY name ASC");
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch categories" });
@@ -253,8 +251,9 @@ app.get("/api/categories", async (req, res) => {
 app.post("/api/categories", async (req, res) => {
   try {
     await ensureDb();
+    const database = await getDb();
     const { name } = req.body;
-    await db.execute({ sql: "INSERT INTO categories (name) VALUES (?)", args: [name] });
+    await database.execute({ sql: "INSERT INTO categories (name) VALUES (?)", args: [name] });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to create category" });
@@ -264,7 +263,8 @@ app.post("/api/categories", async (req, res) => {
 app.delete("/api/categories/:id", async (req, res) => {
   try {
     await ensureDb();
-    await db.execute({ sql: "DELETE FROM categories WHERE id = ?", args: [req.params.id] });
+    const database = await getDb();
+    await database.execute({ sql: "DELETE FROM categories WHERE id = ?", args: [req.params.id] });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete category" });
@@ -275,7 +275,8 @@ app.delete("/api/categories/:id", async (req, res) => {
 app.get("/api/assets", async (req, res) => {
   try {
     await ensureDb();
-    const result = await db.execute("SELECT * FROM assets ORDER BY created_at DESC");
+    const database = await getDb();
+    const result = await database.execute("SELECT * FROM assets ORDER BY created_at DESC");
     res.json(result.rows);
   } catch (error: any) {
     res.status(500).json({ error: "Failed to fetch assets" });
@@ -285,14 +286,15 @@ app.get("/api/assets", async (req, res) => {
 app.post("/api/assets", async (req, res) => {
   try {
     await ensureDb();
+    const database = await getDb();
     const { type, url, title, category } = req.body;
-    await db.execute({
+    await database.execute({
       sql: "INSERT INTO assets (type, url, title, category) VALUES (?, ?, ?, ?)",
       args: [type, url, title, category]
     });
     // Ensure category exists
     try {
-      await db.execute({ sql: "INSERT OR IGNORE INTO categories (name) VALUES (?)", args: [category] });
+      await database.execute({ sql: "INSERT OR IGNORE INTO categories (name) VALUES (?)", args: [category] });
     } catch(e) {}
     res.json({ success: true });
   } catch (error) {
@@ -303,7 +305,8 @@ app.post("/api/assets", async (req, res) => {
 app.delete("/api/assets/:id", async (req, res) => {
   try {
     await ensureDb();
-    await db.execute({ sql: "DELETE FROM assets WHERE id = ?", args: [req.params.id] });
+    const database = await getDb();
+    await database.execute({ sql: "DELETE FROM assets WHERE id = ?", args: [req.params.id] });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete asset" });
@@ -314,8 +317,9 @@ app.delete("/api/assets/:id", async (req, res) => {
 app.post("/api/leads", async (req, res) => {
   try {
     await ensureDb();
+    const database = await getDb();
     const { name, contact } = req.body;
-    await db.execute({
+    await database.execute({
       sql: "INSERT INTO leads (name, contact) VALUES (?, ?)",
       args: [name, contact]
     });
@@ -328,7 +332,8 @@ app.post("/api/leads", async (req, res) => {
 app.get("/api/leads", async (req, res) => {
   try {
     await ensureDb();
-    const result = await db.execute("SELECT * FROM leads ORDER BY created_at DESC");
+    const database = await getDb();
+    const result = await database.execute("SELECT * FROM leads ORDER BY created_at DESC");
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch leads" });
@@ -354,7 +359,8 @@ async function startServer() {
   if (!isProd && !isVercel) {
     console.log("Setting up Vite middleware for development...");
     try {
-      const viteModule = await import("vite");
+      const moduleName = "vite";
+      const viteModule = await import(/* @vite-ignore */ moduleName);
       const vite = await viteModule.createServer({
         server: { middlewareMode: true },
         appType: "spa",
