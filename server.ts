@@ -22,12 +22,11 @@ app.get("/api/ping", (req, res) => {
 const dbUrl = process.env.TURSO_DATABASE_URL;
 const dbToken = process.env.TURSO_AUTH_TOKEN;
 
-if (!dbUrl) {
-  console.warn("⚠️ TURSO_DATABASE_URL is not defined. The application might not function correctly.");
-}
+// Only use file fallback if NOT on Vercel or other serverless env
+const defaultDbUrl = process.env.VERCEL ? "" : "file:local.db";
 
 const db = createClient({
-  url: dbUrl || "file:local.db", // Fallback to local file if URL is missing
+  url: dbUrl || defaultDbUrl,
   authToken: dbToken || "",
 });
 
@@ -35,11 +34,12 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 let dbInitError: string | null = null;
+let initPromise: Promise<void> | null = null;
 
 // Function to initialize database
 async function initDb() {
   try {
-    console.log("Initializing database...");
+    console.log("Checking/Initializing database...");
     // Categories table
     await db.execute(`
       CREATE TABLE IF NOT EXISTS categories (
@@ -47,7 +47,7 @@ async function initDb() {
         name TEXT UNIQUE NOT NULL
       )
     `);
-
+    
     // Assets table
     await db.execute(`
       CREATE TABLE IF NOT EXISTS assets (
@@ -113,12 +113,23 @@ async function initDb() {
   } catch (error: any) {
     console.error("Failed to initialize database:", error);
     dbInitError = error.message;
+    // Reset promise so we can retry on next request if it was a transient error
+    initPromise = null; 
+    throw error;
   }
+}
+
+async function ensureDb() {
+  if (!initPromise) {
+    initPromise = initDb();
+  }
+  return initPromise;
 }
 
 // API routes go here FIRST
 app.get("/api/health", async (req, res) => {
   try {
+    await ensureDb();
     const result = await db.execute("SELECT 1 as ok");
     res.json({ status: "ok", database: "connected", result: result.rows[0], initError: dbInitError });
   } catch (error: any) {
@@ -130,6 +141,7 @@ app.get("/api/health", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   console.log("Login attempt:", req.body.email);
   try {
+    await ensureDb();
     const { email, password } = req.body;
     const result = await db.execute({
       sql: "SELECT * FROM users WHERE email = ? AND password = ?",
@@ -148,6 +160,7 @@ app.post("/api/login", async (req, res) => {
 
 app.post("/api/users/password", async (req, res) => {
   try {
+    await ensureDb();
     const { email, newPassword, currentPassword } = req.body;
     // Verify current password first
     const verify = await db.execute({
@@ -172,6 +185,7 @@ app.post("/api/users/password", async (req, res) => {
 // Settings Endpoints
 app.get("/api/settings", async (req, res) => {
   try {
+    await ensureDb();
     const result = await db.execute("SELECT * FROM settings");
     const settings = result.rows.reduce((acc: any, row: any) => {
       acc[row.key] = row.value;
@@ -186,6 +200,7 @@ app.get("/api/settings", async (req, res) => {
 
 app.post("/api/settings", async (req, res) => {
   try {
+    await ensureDb();
     const { whatsapp, logo_url } = req.body;
     if (whatsapp) {
       await db.execute({ sql: "INSERT OR REPLACE INTO settings (key, value) VALUES ('whatsapp', ?)", args: [whatsapp] });
@@ -202,6 +217,7 @@ app.post("/api/settings", async (req, res) => {
 // Categories Endpoints
 app.get("/api/categories", async (req, res) => {
   try {
+    await ensureDb();
     const result = await db.execute("SELECT * FROM categories ORDER BY name ASC");
     res.json(result.rows);
   } catch (error) {
@@ -211,6 +227,7 @@ app.get("/api/categories", async (req, res) => {
 
 app.post("/api/categories", async (req, res) => {
   try {
+    await ensureDb();
     const { name } = req.body;
     await db.execute({ sql: "INSERT INTO categories (name) VALUES (?)", args: [name] });
     res.json({ success: true });
@@ -221,6 +238,7 @@ app.post("/api/categories", async (req, res) => {
 
 app.delete("/api/categories/:id", async (req, res) => {
   try {
+    await ensureDb();
     await db.execute({ sql: "DELETE FROM categories WHERE id = ?", args: [req.params.id] });
     res.json({ success: true });
   } catch (error) {
@@ -231,6 +249,7 @@ app.delete("/api/categories/:id", async (req, res) => {
 // Assets Endpoints
 app.get("/api/assets", async (req, res) => {
   try {
+    await ensureDb();
     const result = await db.execute("SELECT * FROM assets ORDER BY created_at DESC");
     res.json(result.rows);
   } catch (error: any) {
@@ -240,6 +259,7 @@ app.get("/api/assets", async (req, res) => {
 
 app.post("/api/assets", async (req, res) => {
   try {
+    await ensureDb();
     const { type, url, title, category } = req.body;
     await db.execute({
       sql: "INSERT INTO assets (type, url, title, category) VALUES (?, ?, ?, ?)",
@@ -257,6 +277,7 @@ app.post("/api/assets", async (req, res) => {
 
 app.delete("/api/assets/:id", async (req, res) => {
   try {
+    await ensureDb();
     await db.execute({ sql: "DELETE FROM assets WHERE id = ?", args: [req.params.id] });
     res.json({ success: true });
   } catch (error) {
@@ -267,6 +288,7 @@ app.delete("/api/assets/:id", async (req, res) => {
 // Leads Endpoints
 app.post("/api/leads", async (req, res) => {
   try {
+    await ensureDb();
     const { name, contact } = req.body;
     await db.execute({
       sql: "INSERT INTO leads (name, contact) VALUES (?, ?)",
@@ -280,6 +302,7 @@ app.post("/api/leads", async (req, res) => {
 
 app.get("/api/leads", async (req, res) => {
   try {
+    await ensureDb();
     const result = await db.execute("SELECT * FROM leads ORDER BY created_at DESC");
     res.json(result.rows);
   } catch (error) {
@@ -290,44 +313,55 @@ app.get("/api/leads", async (req, res) => {
 // Final server startup
 async function startServer() {
   console.log("Starting server process...");
+  const isVercel = !!process.env.VERCEL;
+  const isProd = process.env.NODE_ENV === "production";
   
-  // Initialize DB in background or catch early
+  console.log(`Environment: Vercel=${isVercel}, Prod=${isProd}`);
+
+  // Initialize DB
   initDb().then(() => {
-    console.log("Database initialization finished.");
+    console.log("Database initialization check complete.");
   }).catch(err => {
     console.error("Database initialization CRITICAL FAILURE:", err);
     dbInitError = err.message;
   });
-  
-  const isProd = process.env.NODE_ENV === "production";
-  console.log(`Mode: ${isProd ? "production" : "development"}`);
 
-  if (!isProd) {
-    console.log("Setting up Vite middleware...");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
+  if (!isProd && !isVercel) {
+    console.log("Setting up Vite middleware for development...");
+    try {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } catch (e: any) {
+      console.error("Vite startup failed:", e);
+    }
   } else {
-    console.log("Setting up production static serving...");
     const distPath = path.join(process.cwd(), "dist");
+    console.log(`Setting up static serving from: ${distPath}`);
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       if (req.url.startsWith('/api/')) {
         return res.status(404).json({ error: "Endpoint não encontrado" });
       }
-      res.sendFile(path.join(distPath, "index.html"));
+      const indexPath = path.join(distPath, "index.html");
+      res.sendFile(indexPath);
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-  });
+  if (!isVercel) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+    });
+  }
 }
 
-startServer().catch(err => {
-  console.error("Failed to start server:", err);
-});
+// Only auto-start server if not on Vercel
+if (!process.env.VERCEL) {
+  startServer().catch(err => {
+    console.error("Failed to start server:", err);
+  });
+}
 
 export default app;
